@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1b1646">
+<title>Meme Catch</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { --bg1:#1b1646; --bg2:#3a1c71; --ac:#ffd23f; --ac2:#ff4d8d; margin: 0; min-height: 100vh; font-family: 'Baloo 2', system-ui, -apple-system, 'Segoe UI', sans-serif; color: #fff; background: linear-gradient(160deg, var(--bg1), var(--bg2)) fixed; }
+  body[data-theme=sunset] { --bg1:#41122e; --bg2:#c2410c; --ac:#ffe066; --ac2:#ff6b9d; }
+  body[data-theme=forest] { --bg1:#062b22; --bg2:#0f766e; --ac:#bef264; --ac2:#34d399; }
+  body[data-theme=ocean] { --bg1:#06203f; --bg2:#0369a1; --ac:#67e8f9; --ac2:#a78bfa; }
+  #wrap { max-width: 440px; margin: 0 auto; padding: 8px 10px 16px; }
+  #appTitle { text-align: center; font-size: 15px; font-weight: 700; padding: 2px; opacity: .8; user-select: none; touch-action: manipulation; }
+  #hud { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 4px 0 6px; }
+  .pill { background: rgba(255,255,255,.12); border-radius: 14px; padding: 2px 14px 4px; min-width: 84px; text-align: center; line-height: 1.1; }
+  .pill small { display: block; font-size: 11px; opacity: .7; letter-spacing: .5px; }
+  .pill b { font-size: 26px; font-variant-numeric: tabular-nums; display: inline-block; }
+  .pill b.bump { animation: bump .25s; }
+  #time.warn { color: #ff6b6b; animation: bump .5s infinite; }
+  @keyframes bump { 50% { transform: scale(1.25); } }
+  #combo { flex: 1; text-align: center; font-weight: 800; font-size: 15px; color: var(--ac); min-height: 22px; }
+  #combo.on { animation: bump .3s; }
+  #bar { height: 8px; border-radius: 8px; background: rgba(255,255,255,.15); overflow: hidden; margin-bottom: 8px; }
+  #barIn { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--ac2), var(--ac)); border-radius: 8px; transition: width 1s linear; }
+  #field { position: relative; height: 62vh; min-height: 380px; border-radius: 24px; border: 2px solid rgba(255,255,255,.2); overflow: hidden; background: radial-gradient(circle at 20% 30%, rgba(255,255,255,.35) 0 1.5px, transparent 2px) 0 0/90px 90px, radial-gradient(circle at 70% 70%, rgba(255,255,255,.25) 0 1.5px, transparent 2px) 0 0/120px 120px, rgba(0,0,0,.28); animation: stars 14s linear infinite; touch-action: manipulation; }
+  @keyframes stars { to { background-position: 0 90px, 0 120px, 0 0; } }
+  #field.shake { animation: shake .35s; }
+  @keyframes shake { 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
+  #mute { position: absolute; top: 8px; right: 8px; z-index: 6; width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,255,255,.15); font-size: 17px; cursor: pointer; }
+  .panel { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 18px; background: rgba(15,10,40,.78); backdrop-filter: blur(3px); animation: fadeIn .35s; overflow-y: auto; }
+  @keyframes fadeIn { from { opacity: 0; transform: scale(.96); } }
+  #hIcon { font-size: 64px; line-height: 1; animation: bounce 1.6s ease-in-out infinite; }
+  @keyframes bounce { 50% { transform: translateY(-12px) rotate(-6deg); } }
+  .panel h1 { margin: 0; font-size: 38px; line-height: 1; font-weight: 800; color: var(--ac); text-shadow: 0 3px 0 rgba(0,0,0,.35), 0 0 22px var(--ac2); }
+  .panel h2 { margin: 0; font-size: 30px; color: var(--ac); }
+  .panel p { margin: 0; font-size: 15px; opacity: .9; max-width: 300px; line-height: 1.35; }
+  #hLines { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 330px; }
+  .chip { background: rgba(255,255,255,.14); border-radius: 999px; padding: 3px 12px; font-size: 13px; font-weight: 500; }
+  #best { font-size: 14px; color: var(--ac); font-weight: 700; min-height: 20px; }
+  .btn { padding: 8px 30px; border-radius: 16px; border: none; background: linear-gradient(180deg, var(--ac), #ff9f1c); color: #3a1c00; font-family: inherit; font-size: 20px; font-weight: 800; cursor: pointer; box-shadow: 0 5px 0 rgba(0,0,0,.35); transition: transform .08s, box-shadow .08s; }
+  .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0,0,0,.35); }
+  .btn.pulse { animation: pulse 1.4s infinite; }
+  @keyframes pulse { 50% { transform: scale(1.06); } }
+  .btn2 { display: inline-block; padding: 7px 12px; border-radius: 10px; border: 1px solid #bbb; background: #fff; font-family: inherit; font-size: 13px; cursor: pointer; color: #1a1a1a; }
+  #bigscore { font-size: 54px; font-weight: 800; line-height: 1; }
+  .bub { position: absolute; max-width: 80%; cursor: pointer; user-select: none; animation: floatUp linear forwards; }
+  .bub .in { display: block; text-align: center; padding: 9px 16px; border-radius: 22px; font-size: 15px; font-weight: 700; line-height: 1.2; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.4); background: var(--c); box-shadow: inset 0 -4px 0 rgba(0,0,0,.2), inset 0 3px 0 rgba(255,255,255,.38), 0 6px 16px var(--c); animation: sway ease-in-out infinite alternate; }
+  .bub .in.g { background: linear-gradient(145deg, #ffe066, #ff9f1c); color: #4a2a00; text-shadow: none; box-shadow: inset 0 -4px 0 rgba(0,0,0,.18), 0 0 22px #ffd23f; }
+  .bub .in.t { background: #14b8a6; box-shadow: inset 0 -4px 0 rgba(0,0,0,.2), 0 0 18px #2ee6d6; }
+  .bub .in.b { background: #1f1f2e; border: 2px solid #ff4d4d; box-shadow: 0 0 16px #ff4d4d; }
+  @keyframes floatUp { to { transform: translateY(var(--rise)); } }
+  @keyframes sway { from { transform: translateX(-14px) rotate(-2deg); } to { transform: translateX(14px) rotate(2deg); } }
+  .pop { position: absolute; z-index: 4; font-size: 22px; font-weight: 800; pointer-events: none; transform: translate(-50%, -50%); text-shadow: 0 2px 0 rgba(0,0,0,.4); animation: popUp .8s ease-out forwards; }
+  @keyframes popUp { to { opacity: 0; transform: translate(-50%, -150%) scale(1.3); } }
+  .part { position: absolute; z-index: 3; width: 9px; height: 9px; border-radius: 50%; pointer-events: none; }
+
+  #admin { display: none; position: fixed; inset: 0; z-index: 50; background: #f5f6f8; color: #1a1a1a; overflow-y: auto; -webkit-overflow-scrolling: touch; font-family: system-ui, sans-serif; }
+  #adminIn { max-width: 440px; margin: 0 auto; padding: 12px 12px 40px; }
+  #adminIn h3 { margin: 20px 0 8px; font-size: 15px; }
+  .ahead { display: flex; justify-content: space-between; align-items: center; }
+  .ahead b { font-size: 17px; }
+  .arow { background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 10px; margin-bottom: 8px; }
+  .alabel { font-size: 14px; font-weight: 600; margin-bottom: 2px; display: flex; gap: 8px; align-items: center; }
+  .alabel input { width: 18px; height: 18px; flex: none; }
+  .ast { font-size: 12px; color: #999; margin-bottom: 8px; word-break: break-all; }
+  .ast.on { color: #2e9e5b; }
+  .abtns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .abtns input[type=file] { display: none; }
+  .addrow { display: flex; gap: 8px; margin-bottom: 8px; }
+  .addrow input, .fld { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #bbb; font-size: 14px; min-width: 0; width: 100%; margin-bottom: 8px; }
+  .addrow input { margin: 0; }
+  .note { font-size: 12px; color: #666; line-height: 1.5; margin: 6px 0; }
+  .themes { display: flex; gap: 8px; margin-bottom: 8px; }
+  .th { flex: 1; height: 38px; border-radius: 10px; border: 3px solid transparent; cursor: pointer; font-size: 11px; color: #fff; font-weight: 700; }
+  .th.on { border-color: #1a1a1a; }
+  .abtn { padding: 10px 16px; border-radius: 10px; border: none; background: #1a1a1a; color: #fff; font-size: 14px; cursor: pointer; }
+  .dng { color: #c0392b; border-color: #e0a9a3; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="appTitle">🎯 Meme Catch</div>
+  <div id="hud">
+    <div class="pill"><small>SCORE</small><b id="score">0</b></div>
+    <div id="combo"></div>
+    <div class="pill"><small>SAMAY</small><b id="time">60</b></div>
+  </div>
+  <div id="bar"><i id="barIn"></i></div>
+
+  <div id="field">
+    <button id="mute" aria-label="sound">🔊</button>
+    <div class="panel" id="startPanel">
+      <div id="hIcon"></div>
+      <h1 id="hTitle"></h1>
+      <p id="hSub"></p>
+      <div id="hLines"></div>
+      <div id="best"></div>
+      <button class="btn pulse" id="goBtn"></button>
+    </div>
+    <div class="panel" id="endPanel" style="display:none">
+      <h2>Time khatam!</h2>
+      <div id="bigscore">0</div>
+      <div id="newbest" style="color:var(--ac);font-weight:800"></div>
+      <p id="verdict"></p>
+      <button class="btn" id="againBtn">Phir se khelo</button>
+      <button class="btn2" id="homeBtn" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.4)">Home</button>
+    </div>
+  </div>
+</div>
+
+<!-- secret section: title par 5 baar tap karo, phir PIN -->
+<div id="admin"><div id="adminIn">
+  <div class="ahead"><b>🔒 Secret section</b><button class="btn2" id="closeAdmin">Band karo</button></div>
+
+  <h3>Home screen</h3>
+  <input class="fld" id="iIcon" placeholder="Emoji / icon (jaise 🎯)" maxlength="4">
+  <input class="fld" id="iTitle" placeholder="Bada title" maxlength="30">
+  <input class="fld" id="iSub" placeholder="Chhota text (title ke neeche)" maxlength="90">
+  <input class="fld" id="iBtn" placeholder="Button ka text" maxlength="20">
+  <div class="note">Rang (theme):</div>
+  <div class="themes" id="themes"></div>
+  <div class="note">Home screen par extra text lines:</div>
+  <div id="lineList"></div>
+  <div class="addrow"><input id="newLine" placeholder="Nayi line likho" maxlength="40"><button class="abtn" id="addLine">Add</button></div>
+
+  <h3>Naya message jodo</h3>
+  <div class="addrow"><input id="newMsg" type="text" placeholder="Naya message likho" maxlength="80"><button class="abtn" id="addMsg">Add</button></div>
+
+  <h3>Messages aur unke meme sounds</h3>
+  <div class="abtns" style="margin-bottom:8px">
+    <button class="btn2" id="selAll">Sab chuno</button>
+    <button class="btn2 dng" id="delSel">Chune hue hatao</button>
+    <button class="btn2 dng" id="delAll">Sab hatao</button>
+  </div>
+  <div id="msgList"></div>
+
+  <h3>Khaas sounds</h3>
+  <div class="note">Jis message ka apna sound nahi hai, uske liye ye chalenge.</div>
+  <div id="spList"></div>
+
+  <h3>Dost ke liye file banao</h3>
+  <div class="note" id="sizeNote"></div>
+  <div class="abtns">
+    <button class="abtn" id="shareBtn">📤 Share karo</button>
+    <button class="btn2" id="dlBtn">⬇ Download</button>
+  </div>
+  <div class="note">Badlaav ke baad ye file banao. Isme sab sounds, messages aur home screen hota hai, to dost ke phone par bhi wahi chalega. PIN ke bina koi secret section nahi khol sakta.</div>
+  <div style="margin-top:14px"><button class="btn2" id="pinBtn">PIN badlo</button></div>
+</div></div>
+
+<script id="gamedata" type="application/json">null</script>
+<script>
+var SRC = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+
+/* ---------- data ---------- */
+var DEFAULT_MSGS = [
+  'Arre kehna kya chahte ho!', 'Bas kar pagle, rulayega kya?', 'Bhai ne bola karne ka, toh karne ka',
+  'Pura system hil gaya!', 'Kya scene hai!', 'Tension nahi lene ka', 'Jalwa hai hamara',
+  'Bhaiya, samajh nahi aaya!', 'Ek number!', 'Zabardast!', 'Chal hat!', 'Kya baat hai!',
+  'Scene on hai!', 'Full paisa vasool!', 'Tarakki hi tarakki!', 'Bijli girane wala scene'
+];
+var HOME = { icon: '🎯', title: 'Meme Catch', sub: 'Meme bubbles tap karo aur sound suno!', btn: 'Shuru karo', theme: 'night',
+  lines: ['Gold bubble = 5 points ⭐', 'Combo banao, score badhao 🔥', '💣 se bacho!'] };
+var THEMES = [['night','Raat','#3a1c71'],['sunset','Shaam','#c2410c'],['forest','Jungle','#0f766e'],['ocean','Samundar','#0369a1']];
+var COLORS = ['#ff4d8d','#8b5cf6','#0ea5e9','#f97316','#22a559'];
+var SPECIAL = [['pop','Normal tap'],['gold','Gold bubble / time bubble'],['miss','Miss ya bomb'],['over','Game over']];
+
+var data = { updated: 0, pinHash: null, special: {}, home: null,
+  msgs: DEFAULT_MSGS.map(function(t,i){ return { id: 'd'+i, t: t, s: null }; }) };
+try {
+  var raw = document.getElementById('gamedata').textContent.trim();
+  if(raw && raw !== 'null'){ var emb = JSON.parse(raw); if(emb && emb.msgs) data = emb; }
+} catch(e){}
+function norm(){
+  data.special = data.special || {};
+  SPECIAL.forEach(function(p){ if(!data.special[p[0]]) data.special[p[0]] = null; });
+  data.home = Object.assign({}, HOME, data.home || {});
+  data.home.lines = Array.isArray(data.home.lines) ? data.home.lines : HOME.lines.slice();
+}
+norm();
+
+function hash(s){
+  s = 'mc|' + s; var h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for(var i=0,c;i<s.length;i++){ c = s.charCodeAt(i); h1 = Math.imul(h1^c, 2654435761); h2 = Math.imul(h2^c, 1597334677); }
+  h1 = Math.imul(h1^(h1>>>16), 2246822507) ^ Math.imul(h2^(h2>>>13), 3266489909);
+  h2 = Math.imul(h2^(h2>>>16), 2246822507) ^ Math.imul(h1^(h1>>>13), 3266489909);
+  return String(4294967296 * (2097151 & h2) + (h1>>>0));
+}
+function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function $(id){ return document.getElementById(id); }
+
+/* ---------- save on this phone (owner) ---------- */
+function idbOpen(){
+  return new Promise(function(res, rej){
+    if(!window.indexedDB) return rej();
+    var r = indexedDB.open('memecatch', 1);
+    r.onupgradeneeded = function(){ r.result.createObjectStore('kv'); };
+    r.onsuccess = function(){ res(r.result); };
+    r.onerror = function(){ rej(r.error); };
+  });
+}
+function loadLocal(){
+  return idbOpen().then(function(db){
+    return new Promise(function(res){
+      var q = db.transaction('kv').objectStore('kv').get('data');
+      q.onsuccess = function(){ res(q.result || null); };
+      q.onerror = function(){ res(null); };
+    });
+  }).catch(function(){ try { return JSON.parse(localStorage.getItem('mc_data') || 'null'); } catch(e){ return null; } });
+}
+function saveLocal(){
+  data.updated = Date.now();
+  idbOpen().then(function(db){ db.transaction('kv','readwrite').objectStore('kv').put(data, 'data'); })
+  .catch(function(){ try { localStorage.setItem('mc_data', JSON.stringify(data)); } catch(e){ alert('Save nahi ho paya. Chhote sounds use karo.'); } });
+  updateSize();
+}
+var saveT = null;
+function saveSoon(){ clearTimeout(saveT); saveT = setTimeout(saveLocal, 400); }
+loadLocal().then(function(local){
+  if(local && local.msgs && (local.updated || 0) > (data.updated || 0)){ data = local; norm(); renderHome(); }
+});
+
+/* ---------- sound ---------- */
+var muted = false;
+try { muted = localStorage.getItem('mc_mute') === '1'; } catch(e){}
+var AC = null;
+function audio(){ if(!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if(AC.state === 'suspended') AC.resume(); return AC; }
+function beep(freq, dur, type, vol, slide){
+  var ac = audio(), o = ac.createOscillator(), g = ac.createGain();
+  o.type = type || 'sine'; o.frequency.value = freq;
+  if(slide) o.frequency.exponentialRampToValueAtTime(slide, ac.currentTime + dur);
+  g.gain.setValueAtTime(vol || 0.15, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+  o.connect(g); g.connect(ac.destination);
+  o.start(); o.stop(ac.currentTime + dur);
+}
+function defaultBeep(k){
+  if(muted) return;
+  if(k === 'pop') beep(600, 0.12, 'square', 0.12, 900);
+  else if(k === 'gold'){ beep(700, 0.1, 'sine', 0.15, 1200); setTimeout(function(){ beep(1000, 0.15, 'sine', 0.15, 1500); }, 80); }
+  else if(k === 'miss') beep(220, 0.25, 'sawtooth', 0.08, 110);
+  else if(k === 'over') beep(400, 0.4, 'triangle', 0.15, 100);
+}
+var players = {};
+function playSnd(snd, key){
+  if(muted) return;
+  var a = players[key];
+  if(!a || a._src !== snd.data){ a = new Audio(snd.data); a._src = snd.data; players[key] = a; }
+  try { a.currentTime = 0; } catch(e){}
+  a.play().catch(function(){});
+}
+function playMsg(m, gold){
+  var k = gold ? 'gold' : 'pop';
+  if(m && m.s) return playSnd(m.s, 'm' + m.id);
+  if(data.special[k]) return playSnd(data.special[k], 's' + k);
+  defaultBeep(k);
+}
+function playSpecial(k){ if(data.special[k]) playSnd(data.special[k], 's' + k); else defaultBeep(k); }
+function vib(n){ try { navigator.vibrate && navigator.vibrate(n); } catch(e){} }
+$('mute').textContent = muted ? '🔇' : '🔊';
+$('mute').addEventListener('click', function(){
+  muted = !muted; this.textContent = muted ? '🔇' : '🔊';
+  try { localStorage.setItem('mc_mute', muted ? '1' : '0'); } catch(e){}
+});
+
+/* ---------- home screen ---------- */
+function getBest(){ try { return +localStorage.getItem('mc_best') || 0; } catch(e){ return 0; } }
+function renderHome(){
+  var h = data.home;
+  document.body.dataset.theme = h.theme;
+  $('hIcon').textContent = h.icon; $('hTitle').textContent = h.title; $('hSub').textContent = h.sub;
+  $('goBtn').textContent = h.btn || 'Shuru karo';
+  $('appTitle').textContent = (h.icon || '') + ' ' + h.title;
+  document.title = h.title;
+  var L = $('hLines'); L.innerHTML = '';
+  h.lines.forEach(function(t){ var c = document.createElement('span'); c.className = 'chip'; c.textContent = t; L.appendChild(c); });
+  var b = getBest(); $('best').textContent = b ? '🏆 Best: ' + b : '';
+}
+renderHome();
+
+/* ---------- game ---------- */
+var field = $('field'), scoreEl = $('score'), timeEl = $('time'), comboEl = $('combo');
+var running = false, score = 0, time = 60, combo = 0, spawnIv = null, tickIv = null;
+
+function ui(){
+  scoreEl.textContent = score; scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump');
+  timeEl.textContent = Math.max(0, time); timeEl.classList.toggle('warn', time <= 10);
+  $('barIn').style.width = Math.min(100, time / 60 * 100) + '%';
+  var mult = combo >= 10 ? 3 : combo >= 5 ? 2 : 1;
+  comboEl.textContent = combo >= 3 ? 'Combo x' + combo + ' 🔥' + (mult > 1 ? ' (' + mult + 'x points)' : '') : '';
+  comboEl.classList.remove('on'); void comboEl.offsetWidth; if(combo >= 3) comboEl.classList.add('on');
+}
+function floatText(txt, x, y, col){
+  var p = document.createElement('div'); p.className = 'pop'; p.textContent = txt; p.style.color = col;
+  p.style.left = x + 'px'; p.style.top = y + 'px'; field.appendChild(p); setTimeout(function(){ p.remove(); }, 800);
+}
+function spark(x, y, c){
+  var p = document.createElement('div'); p.className = 'part'; p.style.background = c; p.style.left = x + 'px'; p.style.top = y + 'px';
+  field.appendChild(p);
+  var a = Math.random() * 6.28, d = 30 + Math.random() * 45;
+  p.animate([{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+    { transform: 'translate(calc(-50% + ' + Math.cos(a)*d + 'px),calc(-50% + ' + Math.sin(a)*d + 'px)) scale(0)', opacity: 0 }],
+    { duration: 500 + Math.random() * 200, easing: 'ease-out' });
+  setTimeout(function(){ p.remove(); }, 720);
+}
+
+function spawn(){
+  if(!running || !data.msgs.length) return;
+  var m = data.msgs[Math.floor(Math.random() * data.msgs.length)];
+  var r = Math.random(), type = r < 0.07 ? 't' : r < 0.15 ? 'b' : r < 0.27 ? 'g' : 'n';
+  var c = COLORS[Math.floor(Math.random() * COLORS.length)];
+  var bub = document.createElement('div'); bub.className = 'bub';
+  var inn = document.createElement('span'); inn.className = 'in ' + type;
+  inn.textContent = type === 't' ? '⏱ +5 sec' : type === 'b' ? '💣 Mat dabao!' : (type === 'g' ? '⭐ ' : '') + m.t;
+  inn.style.setProperty('--c', c);
+  inn.style.animationDuration = (1.8 + Math.random() * 1.4) + 's';
+  inn.style.animationDelay = '-' + (Math.random() * 2) + 's';
+  bub.appendChild(inn);
+  bub.style.bottom = '-70px';
+  bub.style.setProperty('--rise', '-' + (field.clientHeight + 120) + 'px');
+  bub.style.animationDuration = Math.max(7, 11 - score * 0.02 - Math.random() * 1.5) + 's';
+  field.appendChild(bub);
+  bub.style.left = (20 + Math.random() * Math.max(0, field.clientWidth - bub.offsetWidth - 40)) + 'px';
+  var caught = false;
+  bub.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    if(caught || !running) return;
+    caught = true;
+    var br = bub.getBoundingClientRect(), fr = field.getBoundingClientRect();
+    var x = br.left - fr.left + br.width / 2, y = br.top - fr.top + br.height / 2;
+    var col = type === 'g' ? '#ffd23f' : type === 't' ? '#2ee6d6' : type === 'b' ? '#ff4d4d' : c;
+    bub.remove();
+    if(type === 'b'){
+      score = Math.max(0, score - 3); combo = 0;
+      field.classList.remove('shake'); void field.offsetWidth; field.classList.add('shake');
+      playSpecial('miss'); vib(80); floatText('-3 💥', x, y, '#ff6b6b');
+    } else if(type === 't'){
+      time += 5; playSpecial('gold'); vib(30); floatText('+5 sec', x, y, '#2ee6d6');
+    } else {
+      combo++;
+      var mult = combo >= 10 ? 3 : combo >= 5 ? 2 : 1, pts = (type === 'g' ? 5 : 1) * mult;
+      score += pts; playMsg(m, type === 'g'); vib(20); floatText('+' + pts, x, y, col);
+    }
+    for(var i = 0; i < 10; i++) spark(x, y, col);
+    ui();
+  });
+  bub.addEventListener('animationend', function(){
+    if(!caught && running && (type === 'n' || type === 'g')){ combo = 0; ui(); playSpecial('miss'); }
+    bub.remove();
+  });
+}
+
+function tick(){ time--; ui(); if(time <= 0) end(); }
+
+function start(){
+  if(!data.msgs.length){ alert('Koi message nahi hai. Secret section mein message jodo.'); return; }
+  score = 0; time = 60; combo = 0;
+  $('startPanel').style.display = 'none'; $('endPanel').style.display = 'none';
+  field.querySelectorAll('.bub,.pop,.part').forEach(function(e){ e.remove(); });
+  running = true; audio(); ui();
+  spawn();
+  spawnIv = setInterval(function(){ spawn(); if(score > 30 && Math.random() < 0.3) spawn(); }, 1500);
+  tickIv = setInterval(tick, 1000);
+}
+
+function end(){
+  running = false; clearInterval(spawnIv); clearInterval(tickIv);
+  playSpecial('over');
+  field.querySelectorAll('.bub').forEach(function(e){ e.remove(); });
+  var best = getBest(), nb = score > best;
+  if(nb){ try { localStorage.setItem('mc_best', score); } catch(e){} }
+  $('bigscore').textContent = score;
+  $('newbest').textContent = nb && score > 0 ? '🏆 Naya record!' : (best ? 'Best: ' + best : '');
+  var v;
+  if(score >= 60) v = 'Full tarakki! Tum toh meme king ho! 👑';
+  else if(score >= 35) v = 'Ek number! Kya pakad pakad ke khela hai!';
+  else if(score >= 18) v = 'Badhiya khela! Thoda aur practice kar lo.';
+  else v = 'Arre kehna kya chahte ho...? Phir se try karo! 😄';
+  $('verdict').textContent = v;
+  $('endPanel').style.display = 'flex';
+  timeEl.classList.remove('warn');
+}
+
+$('goBtn').addEventListener('click', start);
+$('againBtn').addEventListener('click', start);
+$('homeBtn').addEventListener('click', function(){
+  $('endPanel').style.display = 'none'; renderHome(); $('startPanel').style.display = 'flex';
+});
+
+/* ---------- secret section ---------- */
+var taps = 0, tapTimer = null;
+$('appTitle').addEventListener('click', function(){
+  if(running) return;
+  taps++; clearTimeout(tapTimer);
+  tapTimer = setTimeout(function(){ taps = 0; }, 2000);
+  if(taps >= 5){ taps = 0; openAdmin(); }
+});
+function setPin(){
+  var p = prompt('Naya secret PIN likho (kam se kam 4 akshar). Yaad rakhna!');
+  if(p === null) return false;
+  if(p.length < 4){ alert('PIN kam se kam 4 ka hona chahiye.'); return false; }
+  if(prompt('PIN dobara likho:') !== p){ alert('PIN match nahi hua.'); return false; }
+  data.pinHash = hash(p); saveLocal(); return true;
+}
+function openAdmin(){
+  if(!data.pinHash){ if(!setPin()) return; }
+  else {
+    var q = prompt('Secret PIN:');
+    if(q === null) return;
+    if(hash(q) !== data.pinHash){ alert('Galat PIN'); return; }
+  }
+  renderAdmin(); $('admin').style.display = 'block';
+}
+$('closeAdmin').addEventListener('click', function(){ $('admin').style.display = 'none'; renderHome(); });
+$('pinBtn').addEventListener('click', function(){ if(setPin()) alert('PIN badal gaya. Nayi file banana mat bhoolna.'); });
+
+function readSound(file, cb){
+  if(!file) return;
+  if(file.size > 1.5 * 1024 * 1024){ alert('File 1.5MB se badi hai. Chhota clip use karo.'); return; }
+  var rd = new FileReader();
+  rd.onload = function(){ cb({ name: file.name, data: rd.result }); };
+  rd.readAsDataURL(file);
+}
+
+var sel = {};
+function updateSelBtn(){
+  var n = Object.keys(sel).filter(function(k){ return sel[k]; }).length;
+  $('delSel').textContent = 'Chune hue hatao (' + n + ')';
+}
+function makeRow(label, snd, key, setSnd, onDelete, checkId){
+  var r = document.createElement('div'); r.className = 'arow';
+  var l = document.createElement('div'); l.className = 'alabel';
+  if(checkId){
+    var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!sel[checkId];
+    cb.onchange = function(){ sel[checkId] = cb.checked; updateSelBtn(); };
+    l.appendChild(cb);
+  }
+  var lt = document.createElement('span'); lt.textContent = label; l.appendChild(lt);
+  var st = document.createElement('div'); st.className = 'ast' + (snd ? ' on' : ''); st.textContent = snd ? '🔊 ' + snd.name : 'sound nahi laga';
+  var b = document.createElement('div'); b.className = 'abtns';
+  var pl = document.createElement('button'); pl.className = 'btn2'; pl.textContent = '▶ Suno';
+  pl.onclick = function(){ muted = false; if(snd) playSnd(snd, key); else defaultBeep(key[0] === 's' ? key.slice(1) : 'pop'); };
+  var ch = document.createElement('label'); ch.className = 'btn2'; ch.textContent = snd ? 'Badlo' : '+ Sound lagao';
+  var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'audio/*';
+  inp.onchange = function(){
+    var f = inp.files[0]; inp.value = '';
+    readSound(f, function(s){ setSnd(s); delete players[key]; saveLocal(); renderAdmin(); playSnd(s, key); });
+  };
+  ch.appendChild(inp); b.appendChild(pl); b.appendChild(ch);
+  if(snd){
+    var cl = document.createElement('button'); cl.className = 'btn2'; cl.textContent = 'Sound hatao';
+    cl.onclick = function(){ setSnd(null); delete players[key]; saveLocal(); renderAdmin(); };
+    b.appendChild(cl);
+  }
+  if(onDelete){
+    var dl = document.createElement('button'); dl.className = 'btn2 dng'; dl.textContent = '🗑 Hatao';
+    dl.onclick = function(){ if(confirm('Ye message hata dein?')) onDelete(); };
+    b.appendChild(dl);
+  }
+  r.appendChild(l); r.appendChild(st); r.appendChild(b);
+  return r;
+}
+
+function renderAdmin(){
+  var h = data.home;
+  $('iIcon').value = h.icon; $('iTitle').value = h.title; $('iSub').value = h.sub; $('iBtn').value = h.btn;
+  var T = $('themes'); T.innerHTML = '';
+  THEMES.forEach(function(t){
+    var b = document.createElement('button'); b.className = 'th' + (h.theme === t[0] ? ' on' : ''); b.textContent = t[1]; b.style.background = t[2];
+    b.onclick = function(){ h.theme = t[0]; saveLocal(); renderHome(); renderAdmin(); };
+    T.appendChild(b);
+  });
+  var LL = $('lineList'); LL.innerHTML = '';
+  h.lines.forEach(function(t, i){
+    var r = document.createElement('div'); r.className = 'arow'; r.style.display = 'flex'; r.style.justifyContent = 'space-between'; r.style.alignItems = 'center'; r.style.gap = '8px';
+    var s = document.createElement('span'); s.textContent = t; s.style.fontSize = '14px';
+    var d = document.createElement('button'); d.className = 'btn2 dng'; d.textContent = '🗑';
+    d.onclick = function(){ h.lines.splice(i, 1); saveLocal(); renderHome(); renderAdmin(); };
+    r.appendChild(s); r.appendChild(d); LL.appendChild(r);
+  });
+  var ml = $('msgList'); ml.innerHTML = '';
+  data.msgs.forEach(function(m, i){
+    ml.appendChild(makeRow(m.t, m.s, 'm' + m.id, function(s){ m.s = s; }, function(){
+      data.msgs.splice(i, 1); delete sel[m.id]; saveLocal(); renderAdmin();
+    }, m.id));
+  });
+  var sl = $('spList'); sl.innerHTML = '';
+  SPECIAL.forEach(function(p){
+    sl.appendChild(makeRow(p[1], data.special[p[0]], 's' + p[0], function(s){ data.special[p[0]] = s; }, null));
+  });
+  updateSelBtn(); updateSize();
+}
+
+[['iIcon','icon'],['iTitle','title'],['iSub','sub'],['iBtn','btn']].forEach(function(p){
+  $(p[0]).addEventListener('input', function(){ data.home[p[1]] = this.value; saveSoon(); renderHome(); });
+});
+$('addLine').addEventListener('click', function(){
+  var t = $('newLine').value.trim(); if(!t) return;
+  data.home.lines.push(t); $('newLine').value = ''; saveLocal(); renderHome(); renderAdmin();
+});
+$('addMsg').addEventListener('click', function(){
+  var t = $('newMsg').value.trim(); if(!t) return;
+  data.msgs.unshift({ id: newId(), t: t, s: null });
+  $('newMsg').value = ''; saveLocal(); renderAdmin();
+});
+$('selAll').addEventListener('click', function(){
+  var all = data.msgs.every(function(m){ return sel[m.id]; });
+  data.msgs.forEach(function(m){ sel[m.id] = !all; }); renderAdmin();
+});
+$('delSel').addEventListener('click', function(){
+  var n = data.msgs.filter(function(m){ return sel[m.id]; }).length;
+  if(!n){ alert('Pehle messages ke aage tick lagao.'); return; }
+  if(!confirm(n + ' message hata dein?')) return;
+  data.msgs = data.msgs.filter(function(m){ return !sel[m.id]; }); sel = {}; saveLocal(); renderAdmin();
+});
+$('delAll').addEventListener('click', function(){
+  if(!data.msgs.length) return;
+  if(!confirm('Saare ' + data.msgs.length + ' messages hata dein?')) return;
+  data.msgs = []; sel = {}; saveLocal(); renderAdmin();
+});
+
+function updateSize(){
+  var n = 0;
+  data.msgs.forEach(function(m){ if(m.s) n += m.s.data.length; });
+  for(var k in data.special){ if(data.special[k]) n += data.special[k].data.length; }
+  var el = $('sizeNote');
+  if(el) el.textContent = 'Sounds ka size: ' + (n / 1048576).toFixed(1) + ' MB' + (n > 8 * 1048576 ? ' (bada hai, kuch sounds chhote kar lo)' : '');
+}
+
+/* ---------- friend file ---------- */
+function buildFile(){
+  saveLocal();
+  var json = JSON.stringify(data).replace(/</g, '\\u003c');
+  return SRC.replace(/(<script id="gamedata" type="application\/json">)[\s\S]*?(<\/script>)/, function(m, a, b){ return a + json + b; });
+}
+function download(blob){
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'meme-catch.html';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+$('dlBtn').addEventListener('click', function(){ download(new Blob([buildFile()], { type: 'text/html' })); });
+$('shareBtn').addEventListener('click', function(){
+  var blob = new Blob([buildFile()], { type: 'text/html' });
+  var file = new File([blob], 'meme-catch.html', { type: 'text/html' });
+  if(navigator.canShare && navigator.canShare({ files: [file] })){
+    navigator.share({ files: [file], title: data.home.title }).catch(function(e){ if(e.name !== 'AbortError') download(blob); });
+  } else { download(blob); alert('File download ho gayi. Ab ise WhatsApp se bhej do.'); }
+});
+</script>
+</body>
+</html>
