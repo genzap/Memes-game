@@ -78,6 +78,11 @@
   .th.on { border-color: #1a1a1a; }
   .abtn { padding: 10px 16px; border-radius: 10px; border: none; background: #1a1a1a; color: #fff; font-size: 14px; cursor: pointer; }
   .dng { color: #c0392b; border-color: #e0a9a3; }
+  #nick { width: 230px; padding: 10px 14px; border-radius: 14px; border: 2px solid rgba(255,255,255,.3); background: rgba(255,255,255,.1); color: #fff; font-family: inherit; font-size: 20px; text-align: center; outline: none; }
+  #nick:focus { border-color: var(--ac); }
+  #nick::placeholder { color: rgba(255,255,255,.5); }
+  #who { font-size: 14px; font-weight: 700; background: rgba(255,255,255,.14); border-radius: 999px; padding: 3px 14px; cursor: pointer; }
+  #who:empty { display: none; }
 </style>
 </head>
 <body>
@@ -92,11 +97,19 @@
 
   <div id="field">
     <button id="mute" aria-label="sound">🔊</button>
+    <div class="panel" id="nickPanel" style="display:none">
+      <div style="font-size:54px;line-height:1">🙋</div>
+      <h2>Tumhara nickname?</h2>
+      <p>Game shuru karne se pehle apna nickname likho.</p>
+      <input id="nick" placeholder="Nickname" maxlength="15" autocomplete="off">
+      <button class="btn" id="nickBtn">Aage badho</button>
+    </div>
     <div class="panel" id="startPanel">
       <div id="hIcon"></div>
       <h1 id="hTitle"></h1>
       <p id="hSub"></p>
       <div id="hLines"></div>
+      <div id="who"></div>
       <div id="best"></div>
       <button class="btn pulse" id="goBtn"></button>
     </div>
@@ -141,6 +154,13 @@
   <div class="note">Jis message ka apna sound nahi hai, uske liye ye chalenge.</div>
   <div id="spList"></div>
 
+  <h3>Khiladi (users)</h3>
+  <div class="note">Online database ka link lagao, tabhi sab doston ke nickname yahan dikhenge.</div>
+  <input class="fld" id="iDb" placeholder="Database URL (https://....firebasedatabase.app)">
+  <div class="abtns" style="margin-bottom:8px"><button class="abtn" id="usrRef">🔄 Users dekho</button></div>
+  <div class="note" id="usrNote"></div>
+  <div id="usrList"></div>
+
   <h3>Dost ke liye file banao</h3>
   <div class="note" id="sizeNote"></div>
   <div class="abtns">
@@ -176,6 +196,7 @@ try {
 } catch(e){}
 function norm(){
   data.special = data.special || {};
+  data.dbUrl = data.dbUrl || '';
   SPECIAL.forEach(function(p){ if(!data.special[p[0]]) data.special[p[0]] = null; });
   data.home = Object.assign({}, HOME, data.home || {});
   data.home.lines = Array.isArray(data.home.lines) ? data.home.lines : HOME.lines.slice();
@@ -281,6 +302,58 @@ function renderHome(){
 }
 renderHome();
 
+/* ---------- khiladi: nickname + tracking ---------- */
+function ls(k, v){ try { if(v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch(e){} return null; }
+var uid = ls('mc_uid'); if(!uid){ uid = newId(); ls('mc_uid', uid); }
+if(!ls('mc_first')) ls('mc_first', Date.now());
+var nick = ls('mc_nick') || '';
+function dbBase(){ return (data.dbUrl || '').trim().replace(/\.json.*$/, '').replace(/\/+$/, ''); }
+function track(){
+  var b = dbBase(); if(!b || !nick) return;
+  try { fetch(b + '/players/' + uid + '.json', { method: 'PATCH', body: JSON.stringify({ nick: nick, first: +ls('mc_first'), last: Date.now(), plays: +ls('mc_plays') || 0, best: getBest() }) }).catch(function(){}); } catch(e){}
+}
+function showEntry(){
+  $('who').textContent = nick ? '👤 ' + nick + '  ✏️' : '';
+  $('nickPanel').style.display = nick ? 'none' : 'flex';
+  $('startPanel').style.display = nick ? 'flex' : 'none';
+}
+$('nickBtn').addEventListener('click', function(){
+  var v = $('nick').value.trim();
+  if(v.length < 2){ alert('Nickname kam se kam 2 akshar ka rakho.'); return; }
+  nick = v; ls('mc_nick', nick); showEntry(); track();
+});
+$('who').addEventListener('click', function(){ $('nick').value = nick; $('nickPanel').style.display = 'flex'; $('startPanel').style.display = 'none'; });
+showEntry();
+
+function ago(t){
+  if(!t) return '-';
+  var m = Math.round((Date.now() - t) / 60000);
+  if(m < 1) return 'abhi'; if(m < 60) return m + ' min pehle';
+  var h = Math.round(m / 60); if(h < 24) return h + ' ghante pehle';
+  return Math.round(h / 24) + ' din pehle';
+}
+function loadUsers(){
+  var b = dbBase(), note = $('usrNote'), L = $('usrList'); L.innerHTML = '';
+  if(!b){ note.textContent = 'Pehle upar database ka link lagao.'; return; }
+  note.textContent = 'Load ho raha hai...';
+  fetch(b + '/players.json').then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(o){
+    var arr = Object.keys(o || {}).map(function(k){ var p = o[k]; p.id = k; return p; }).sort(function(a, c){ return (c.last || 0) - (a.last || 0); });
+    note.textContent = 'Kul khiladi: ' + arr.length + '  |  Total games: ' + arr.reduce(function(s, p){ return s + (p.plays || 0); }, 0);
+    arr.forEach(function(p){
+      var r = document.createElement('div'); r.className = 'arow'; r.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px';
+      var d = document.createElement('div');
+      var n = document.createElement('div'); n.className = 'alabel'; n.textContent = '👤 ' + String(p.nick || '?');
+      var i = document.createElement('div'); i.className = 'ast'; i.style.margin = '0'; i.textContent = 'Best ' + (p.best || 0) + ' · ' + (p.plays || 0) + ' games · ' + ago(p.last);
+      d.appendChild(n); d.appendChild(i);
+      var x = document.createElement('button'); x.className = 'btn2 dng'; x.textContent = '🗑';
+      x.onclick = function(){ if(confirm('Is khiladi ko hata dein?')) fetch(b + '/players/' + p.id + '.json', { method: 'DELETE' }).then(loadUsers); };
+      r.appendChild(d); r.appendChild(x); L.appendChild(r);
+    });
+  }).catch(function(){ note.textContent = 'Load nahi hua. Link sahi hai? Database rules mein read/write true hain?'; });
+}
+$('usrRef').addEventListener('click', loadUsers);
+$('iDb').addEventListener('input', function(){ data.dbUrl = this.value; saveSoon(); });
+
 /* ---------- game ---------- */
 var field = $('field'), scoreEl = $('score'), timeEl = $('time'), comboEl = $('combo');
 var running = false, score = 0, time = 60, combo = 0, spawnIv = null, tickIv = null;
@@ -356,6 +429,7 @@ function spawn(){
 function tick(){ time--; ui(); if(time <= 0) end(); }
 
 function start(){
+  if(!nick){ showEntry(); return; }
   if(!data.msgs.length){ alert('Koi message nahi hai. Secret section mein message jodo.'); return; }
   score = 0; time = 60; combo = 0;
   $('startPanel').style.display = 'none'; $('endPanel').style.display = 'none';
@@ -372,6 +446,7 @@ function end(){
   field.querySelectorAll('.bub').forEach(function(e){ e.remove(); });
   var best = getBest(), nb = score > best;
   if(nb){ try { localStorage.setItem('mc_best', score); } catch(e){} }
+  ls('mc_plays', (+ls('mc_plays') || 0) + 1); track();
   $('bigscore').textContent = score;
   $('newbest').textContent = nb && score > 0 ? '🏆 Naya record!' : (best ? 'Best: ' + best : '');
   var v;
@@ -412,7 +487,7 @@ function openAdmin(){
     if(q === null) return;
     if(hash(q) !== data.pinHash){ alert('Galat PIN'); return; }
   }
-  renderAdmin(); $('admin').style.display = 'block';
+  renderAdmin(); $('admin').style.display = 'block'; loadUsers();
 }
 $('closeAdmin').addEventListener('click', function(){ $('admin').style.display = 'none'; renderHome(); });
 $('pinBtn').addEventListener('click', function(){ if(setPin()) alert('PIN badal gaya. Nayi file banana mat bhoolna.'); });
@@ -466,7 +541,7 @@ function makeRow(label, snd, key, setSnd, onDelete, checkId){
 
 function renderAdmin(){
   var h = data.home;
-  $('iIcon').value = h.icon; $('iTitle').value = h.title; $('iSub').value = h.sub; $('iBtn').value = h.btn;
+  $('iIcon').value = h.icon; $('iTitle').value = h.title; $('iSub').value = h.sub; $('iBtn').value = h.btn; $('iDb').value = data.dbUrl || '';
   var T = $('themes'); T.innerHTML = '';
   THEMES.forEach(function(t){
     var b = document.createElement('button'); b.className = 'th' + (h.theme === t[0] ? ' on' : ''); b.textContent = t[1]; b.style.background = t[2];
